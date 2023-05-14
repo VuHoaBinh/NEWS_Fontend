@@ -1,0 +1,1268 @@
+// AviviD.web_id = "upmedia";
+//AviviD.web_id = "rick";
+//AviviD.settings.website_type = "3";
+AviviD.banner_id_to_imp_tracker = {
+    'AUCO20220117402228_1': '_',
+    'AUCO20220117402387_1': '_',
+    'thanhnien202120220117401360_1': '_',
+    'thanhnien202120220117401550_1': '_',
+    'thanhnien202120220120664969_1': '_',
+    'AUCO20220120664716_1': '_'
+};
+
+AviviD.igen = function(n) {
+    let id = '';
+    const char = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890';
+    const len = char.length;
+    for (i = 0; i < n; i++) {
+        id += char.charAt(Math.random() * len);
+    }
+    return id;
+};
+AviviD.onpage_id = AviviD.igen(16);
+
+// get highest z-index
+AviviD.highest_zindex = function(id) {
+    exec_times = 0
+    var clock = setInterval(function() {
+        // 設定元素高度 start
+        var index_highest = 0;
+        jQuery("body *").each(function() {
+            // always use a radix when using parseInt
+            var index_current = parseInt(jQuery(this).css("zIndex"), 10);
+            if (index_current > index_highest) {
+                index_highest = index_current;
+            }
+        })
+        index_highest++;
+        jQuery("." + id + "").css("z-index", index_highest);
+        // 設定元素高度 end
+        exec_times += 1;
+        if (exec_times == 5) { clearInterval(clock) }
+    }, 1000);
+}
+
+AviviD.onpage_inline_style = function(b = false, force_rb = false) {
+    AviviD.highest_zindex(AviviD.onpage_id);
+    base = "position:fixed; height:auto; display:block !important;"
+    pos_styles = ["right:30px; bottom:30px;", "right:30px; top:30px;", "left:30px; top:30px;", "left:30px; bottom:30px;"];
+    b_styles = ["right:30px; bottom:13vh;", "right:30px; top:30px;", "left:30px; top:30px;", "left:30px; bottom:13vh;"];
+    if (window.innerWidth > 458) {
+        base += "width:310px;";
+    } else {
+        base += "width:80vw;";
+    }
+    if (b) {
+        base += b_styles[parseInt(AviviD.settings.onpage_pc_position)];
+    } else if (force_rb) {
+        base += pos_styles[0];
+    } else {
+        base += pos_styles[parseInt(AviviD.settings.onpage_pc_position)];
+    }
+    return base;
+};
+
+AviviD.get_article_url = function() {
+    if (document.querySelector("meta[property='og:url']") !== null) {
+        AviviD.url = document.querySelector("meta[property='og:url']").getAttribute('content');
+    } else {
+        AviviD.url = window.location.href;
+    }
+
+    return AviviD.url;
+};
+AviviD.get_article_image = function() {
+    if (document.querySelector("meta[property='og:image']") !== null) {
+        AviviD.image = document.querySelector("meta[property='og:image']").getAttribute('content');
+    } else if (document.querySelector("img")) {
+        AviviD.image = document.querySelector("img").getAttribute("src");
+    } else {
+        AviviD.image = '_';
+    }
+    return AviviD.image;
+};
+AviviD.get_article_description = function() {
+    if (document.querySelector("meta[property='og:description']") !== null) {
+        AviviD.description = document.querySelector("meta[property='og:description']").getAttribute('content');
+    } else {
+        AviviD.description = '_';
+    }
+    return AviviD.description;
+};
+AviviD.get_meta = function() {
+    AviviD.get_article_url();
+    AviviD.get_article_description();
+    AviviD.get_article_image();
+    AviviD.metadata = {
+        title: AviviD.title,
+        url: AviviD.url,
+        description: AviviD.description,
+        image: AviviD.image
+    };
+    return AviviD.metadata;
+};
+
+AviviD.show_log = 1;
+AviviD.imitation_subscribe_webpush = function(status, onpage_type) {
+    if (AviviD.check_ignore_onpage_with_category_id()) {
+        AviviD.console_log("block category");
+        return false;
+    }
+    if (AviviD.check_ignore_onpage_with_json(status)) {
+        AviviD.console_log("block json");
+        return false;
+    }
+    // if (AviviD.check_ignore_onpage_with_ssl(status)) {
+    //     return false;
+    // }
+    AviviD.get_onpage_settings(status); //David 2021-12-08
+    AviviD.likrTimer.clearTimer();
+    return true;
+};
+AviviD.ignore_onpage_category_id = {
+    '20200505000001': 1
+};
+AviviD.console_log = function(msg) {
+    if (AviviD.show_log) {
+        console.log(msg);
+    }
+};
+AviviD.check_ignore_onpage_with_category_id = function() {
+    var AviviD_return_flag = false;
+    var is_pause = AviviD.get_cookie('AviviD_waterfall_pause');
+    if (AviviD.category_id in AviviD.ignore_onpage_category_id &&
+        AviviD.ignore_onpage_category_id[AviviD.category_id] == 1) {
+        var disallow = ['/ord/', '/app/', '/mc_api/',
+            '.inw', '/ListBidLogAction.do', '/Cc1c08',
+            '/Cc1c07', '/Cc1c10', '/SearchAction',
+            '/meb/'
+        ];
+        disallow.forEach(function(str) {
+            if (window.location.pathname.indexOf(str) > -1) {
+                AviviD_return_flag = true;
+                return false;
+            }
+        });
+    }
+    if (AviviD_return_flag || is_pause) {
+        return true;
+    }
+    return false;
+}
+AviviD.check_ignore_onpage_with_json = function(status) {
+    var ajax_setting = {
+        "data_url": "https://avivid.likr.tw/ios_onpage_switch_file/total_switch.json",
+        "http_method": "GET",
+        "data_type": "json",
+        "payload": {},
+        "async": false,
+        "headers": {},
+        "cache": false,
+        "callback_function": ""
+    };
+    var AviviD_return_flag = false;
+    var is_pause = AviviD.get_cookie('AviviD_waterfall_pause');
+    var data = AviviD.get_ajax_datas(ajax_setting, status, false);
+    if (AviviD.settings.website_type in data &&
+        data[AviviD.settings.website_type] == 0) {
+        AviviD_return_flag = true;
+    }
+    if (AviviD_return_flag || is_pause) {
+        return true;
+    }
+    return false;
+};
+AviviD.check_ignore_onpage_with_ssl = function(status) {
+    var ajax_setting = {
+        "data_url": "https://load-balancer.likr.com.tw/api/hasSSL.php",
+        "http_method": "POST",
+        "data_type": "json",
+        "payload": { 'host': window.location.host },
+        "async": true,
+        "headers": {},
+        "cache": false,
+        "callback_function": "get_ssl_result"
+    };
+    AviviD.get_ajax_datas(ajax_setting, status, false);
+};
+AviviD.get_ssl_result = function(callback_data, status, ajax_setting) {
+    if (callback_data && window.location.protocol.match("https")) {
+        AviviD.console_log("ssl pass ! status : " + status);
+        AviviD.get_onpage_settings(status);
+    }
+};
+AviviD.get_onpage_settings = function(status) {
+    var ajax_setting = {
+        "data_url": "https://avivid.likr.tw/ios_onpage_switch_file/" + AviviD.web_id + ".json",
+        "http_method": "GET",
+        "data_type": "json",
+        "payload": {},
+        "async": true,
+        "headers": {},
+        "cache": false,
+        "callback_function": "get_onpage_data"
+    };
+    AviviD.get_ajax_datas(ajax_setting, status, false);
+};
+AviviD.get_ajax_datas = function(ajax_setting, status, force_error_callback) {
+    var return_data = {};
+    jQuery.ajax({
+        type: ajax_setting["http_method"],
+        dataType: ajax_setting["data_type"],
+        async: ajax_setting["async"],
+        data: ajax_setting["payload"],
+        url: ajax_setting["data_url"],
+        headers: ajax_setting["headers"],
+        crossDomain: true,
+        cache: ajax_setting["cache"],
+        timeout: 2000
+    }).done(function(data) {
+        if (ajax_setting["async"]) {
+            AviviD[ajax_setting["callback_function"]](data, status, ajax_setting);
+        } else {
+            return_data = data;
+        }
+    }).fail(function(data) {
+        if (force_error_callback) {
+            AviviD.console_log(ajax_setting["data_url"] + " " + ajax_setting["callback_function"] + " empty!");
+            AviviD[ajax_setting["callback_function"]]({}, status, ajax_setting);
+        }
+    });
+    return return_data;
+};
+AviviD.setIconWithImpression = function(icon, title) {
+    let iconWithImpression = new URL('https://popcorn.likr.tw/api/onpage_impression.php');
+    iconWithImpression.searchParams.append('web_id', AviviD.web_id);
+    iconWithImpression.searchParams.append('os_type', AviviD.int_os_type);
+    iconWithImpression.searchParams.append('uuid', AviviD.get_ios_uuid());
+    iconWithImpression.searchParams.append('type', 'direct_push');
+    iconWithImpression.searchParams.append('title', title);
+    iconWithImpression.searchParams.append('url', icon);
+    return iconWithImpression.href;
+};
+AviviD.setUrlWithRedirecter = function(url, title) {
+    let UrlWithRedirecter = new URL('https://popcorn.likr.tw/api/onpage_redirecter.php');
+    UrlWithRedirecter.searchParams.append('web_id', AviviD.web_id);
+    UrlWithRedirecter.searchParams.append('os_type', AviviD.int_os_type);
+    UrlWithRedirecter.searchParams.append('uuid', AviviD.get_ios_uuid());
+    UrlWithRedirecter.searchParams.append('type', 'direct_push');
+    UrlWithRedirecter.searchParams.append('title', title);
+    UrlWithRedirecter.searchParams.append('url', btoa(url));
+    return UrlWithRedirecter.href;
+};
+AviviD.get_date_format = function() {
+    var d = new Date();
+    var y = d.getFullYear();
+    var m = d.getMonth() + 1;
+    m = ('0' + m).substr(-2);
+    var day = d.getDate();
+    day = ('0' + day).substr(-2);
+    var datestr = '' + y + m + day;
+    return datestr;
+};
+AviviD.set_onpage_cookie_by_ad_id = function(data) {
+    var read_ad_id = (AviviD.get_onpage_cookie('AviviD_ad_id') != null) ? AviviD.get_onpage_cookie('AviviD_ad_id') : "_";
+    if (data.ad_id != 'no_ad_id' && data.ad_id != null) {
+        var ad_id = ("_" == read_ad_id || data.ad_id.substr(-3) == '_re') ? data.ad_id : read_ad_id + "," + data.ad_id;
+        var d = new Date();
+        var y = d.getFullYear();
+        var m = d.getMonth() + 1;
+        var day = d.getDate();
+        var today = y + '/' + m + '/' + day;
+        var sd = new Date(today + 'T23:59:59');
+        var now = d.getTime();
+        var sd_time = sd.getTime();
+        var diff = (sd_time - now) / 1000 / 60;
+        AviviD.set_onpage_cookie_minutes('AviviD_ad_id', ad_id, Math.floor(diff));
+    } else {
+        AviviD.set_onpage_cookie_minutes('AviviD_ad_id', data.ad_id, 1);
+    }
+    return true;
+};
+AviviD.set_onpage_cookie_by_push_id = function(data) {
+    var read_push_id = (AviviD.get_onpage_cookie('AviviD_push_id') != null) ? AviviD.get_onpage_cookie('AviviD_push_id') : "_";
+    if (data.push_id != '_' && data.push_id != null) {
+        var push_id = "_" == read_push_id ? data.push_id : read_push_id + "," + data.push_id;
+        var d = new Date();
+        var y = d.getFullYear();
+        var m = d.getMonth() + 1;
+        var day = d.getDate();
+        var today = y + '/' + m + '/' + day;
+        var sd = new Date(today + 'T23:59:59');
+        var now = d.getTime();
+        var sd_time = sd.getTime();
+        var diff = (sd_time - now) / 1000 / 60;
+        AviviD.set_onpage_cookie_minutes('AviviD_push_id', push_id, Math.floor(diff));
+    } else {
+        AviviD.set_onpage_cookie_minutes('AviviD_push_id', data.push_id, 1);
+    }
+    return true;
+};
+AviviD.set_onpage_cookie_minutes = function(name, value, minutes) {
+    var domain = AviviD.get_web_top_domain();
+    var Mins = minutes || 60;
+    var exp = new Date();
+    exp.setTime(exp.getTime() + Mins * 60 * 1000);
+    if (AviviD.protocol_firebase_accept()) {
+        document.cookie = name + "=" + escape(value) + ";expires=" + exp.toGMTString() + ";domain=" + domain + ";path=/;secure;";
+    } else {
+        document.cookie = name + "=" + escape(value) + ";expires=" + exp.toGMTString() + ";domain=" + domain + ";path=/;";
+    }
+};
+AviviD.set_onpage_ad_see_twice = function(ad_id) {
+    var read_ad_see_twice = (AviviD.get_onpage_cookie('AviviD_ad_see_twice') != null) ? AviviD.get_onpage_cookie('AviviD_ad_see_twice') : "_";
+    if (ad_id in AviviD.banner_id_to_imp_tracker) {
+        if (ad_id != 'no_ad_id' && ad_id != null) {
+            if (read_ad_see_twice.includes(ad_id)) AviviD.set_onpage_ad_click_once(ad_id); //如果已經看過一次，又再看到，等級等於晉升到被點過
+            else {
+                var ad_see_twice = "_" == read_ad_see_twice ? ad_id : read_ad_see_twice + "," + ad_id;
+                AviviD.set_origin_cookie('AviviD_ad_see_twice', ad_see_twice, 7);
+            }
+        }
+        return true;
+    }
+}
+AviviD.set_onpage_ad_click_once = function(ad_id) {
+    var read_ad_click_once = (AviviD.get_onpage_cookie('AviviD_ad_click_once') != null) ? AviviD.get_onpage_cookie('AviviD_ad_click_once') : "_";
+    if (ad_id in AviviD.banner_id_to_imp_tracker && !(read_ad_click_once.includes(ad_id))) {
+        if (ad_id != 'no_ad_id' && ad_id != null) {
+            var ad_click_once = "_" == read_ad_click_once ? ad_id : read_ad_click_once + "," + ad_id;
+            AviviD.set_origin_cookie('AviviD_ad_click_once', ad_click_once, 7);
+        }
+        return true;
+    }
+}
+AviviD.set_origin_cookie = function(name, value, days) {
+    var domain = AviviD.get_top_domain();
+    var Days = days || 3650;
+    var exp = new Date();
+    exp.setTime(exp.getTime() + Days * 24 * 60 * 60 * 1000);
+    if (AviviD.protocol_firebase_accept()) {
+        document.cookie = name + "=" + escape(value) + ";expires=" + exp.toGMTString() + ";domain=" + domain + ";path=/;secure;";
+    } else {
+        document.cookie = name + "=" + escape(value) + ";expires=" + exp.toGMTString() + ";domain=" + domain + ";path=/;";
+    }
+};
+AviviD.get_web_top_domain = function() {
+    var domain = window.location.hostname;
+    var isIP = /[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/.test(domain);
+    if (isIP) return domain;
+    var length = domain.split('.').length;
+    var domain_split_reverse = domain.split('.').reverse();
+    if (length <= '2') {
+        return domain;
+    } else if (length == '3') {
+        if (domain_split_reverse[1] === 'com') {
+            return domain;
+        } else {
+            return domain_split_reverse[1] + "." + domain_split_reverse[0];
+        }
+    } else if (length == '4') {
+        if (domain_split_reverse[0] === 'com') {
+            return domain_split_reverse[1] + "." + domain_split_reverse[0];
+        } else {
+            return domain_split_reverse[2] + "." + domain_split_reverse[1] + "." + domain_split_reverse[0];
+        }
+    } else {
+        return domain_split_reverse[2] + "." + domain_split_reverse[1] + "." + domain_split_reverse[0];
+    }
+};
+AviviD.get_web_article_title = function() {
+    if (AviviD.web_id == 'pixnet') {
+        AviviD.settings.payment_selector = (undefined != document.body.dataset.articleId) ? '#article-' + document.body.dataset.articleId + ' > h2 > a' : '_';
+    } else {
+        AviviD.settings.payment_selector = (AviviD.is_mobile(AviviD.str_os_type)) ? AviviD.settings.payment_selector_m : AviviD.settings.payment_selector;
+    }
+    if (document.querySelector("meta[property='og:title']") !== null) {
+        AviviD.title = document.querySelector("meta[property='og:title']").getAttribute('content');
+    } else if (document.querySelector("title") !== null) {
+        AviviD.title = document.querySelector("title").innerHTML;
+    } else if (document.querySelector(AviviD.settings.payment_selector) !== null) {
+        AviviD.title = document.querySelector(AviviD.settings.payment_selector).innerHTML;
+    } else {
+        AviviD.title = '_';
+    }
+    return AviviD.title;
+};
+AviviD.is_mobile = function(str_os_type) {
+    if (str_os_type == "Android" || str_os_type == "iOS") {
+        return true;
+    } else {
+        return false;
+    }
+};
+AviviD.get_onpage_cookie = function(name) {
+    var arr = document.cookie.match(new RegExp("(^| )" + name + "=([^;]*)(;|$)"));
+    if (arr != null) {
+        return unescape(arr[2]);
+    }
+    return null;
+};
+AviviD.os_type_to_number = function(os_type) {
+    var os_type_mapping = {
+        "Android": 1,
+        "iOS": 2,
+        "Mac OS": 3,
+        "Windows": 4
+    };
+    if (os_type in os_type_mapping) {
+        return os_type_mapping[os_type];
+    }
+    return 9;
+};
+AviviD.browser_type_to_number = function(browser_type) {
+    var browser_type_mapping = {
+        "Chrome": 1,
+        "Firefox": 2,
+        "Safari": 3,
+        "iOS": 4,
+        "IE": 5,
+        "Edge": 6,
+        "Samsung Browser": 8,
+        "LINE": 10,
+        "weixin": 11,
+        "fbapp": 12,
+        "Instagram": 13,
+        "Opera": 14,
+        "Unknown": 9
+    };
+    if (browser_type in browser_type_mapping) {
+        return browser_type_mapping[browser_type];
+    }
+    return 9;
+};
+AviviD.os = function() {
+    var u = navigator.userAgent,
+        app = navigator.appVersion;
+    var ua = navigator.userAgent.toLowerCase();
+    var isOpera = u.indexOf("Opera") > -1 || u.indexOf("OPR") > -1;
+    return {
+        IE: u.indexOf('Trident') > -1,
+        presto: u.indexOf('Presto') > -1,
+        opera: isOpera,
+        Safari: (u.indexOf("compatible") > -1 && u.indexOf("MSIE") > -1 && !isOpera) || (u.indexOf("Safari") > -1 && u.indexOf("Chrome") == -1 && u.indexOf("Edg") == -1),
+        webKit: u.indexOf('AppleWebKit') > -1,
+        firefox: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1,
+        mobile: !!u.match(/AppleWebKit.*Mobile.*/),
+        ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/),
+        android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1,
+        iPhone: u.indexOf('iPhone') > -1,
+        iPad: u.indexOf('iPad') > -1,
+        webApp: u.indexOf('Safari') == -1,
+        iosv: (u.indexOf('iPhone OS') == -1) ? false : u.substr(u.indexOf('iPhone OS') + 9, 3),
+        weixin: ua.match(/MicroMessenger/i) == "micromessenger",
+        fbapp: u.indexOf('FBAV') > -1 || u.indexOf('FBSV') > -1,
+        line: u.indexOf('Line') > -1,
+        Instagram: u.indexOf('Instagram') > -1
+    };
+}();
+AviviD.detect_os_types = function() {
+    return AviviD.UAResult.os.name;
+};
+AviviD.detect_browser_types = function() {
+    var isLINE = (navigator.userAgent.match(/line/i) != null);
+    var isiOS = (AviviD.UAResult.os.name == 'iOS');
+    var isweixin = navigator.userAgent.toLowerCase().match(/MicroMessenger/i) == "micromessenger";
+    var isfbapp = navigator.userAgent.indexOf('FBAV') > -1 || navigator.userAgent.indexOf('FBSV') > -1;
+    var isInstagram = navigator.userAgent.indexOf('Instagram') > -1;
+    var isOpera = navigator.userAgent.indexOf("Opera") > -1 || navigator.userAgent.indexOf("OPR") > -1;
+    if (isLINE) {
+        return "LINE";
+    } else if (isiOS) {
+        return "iOS";
+    } else if (isweixin) {
+        return "weixin";
+    } else if (isfbapp) {
+        return "fbapp";
+    } else if (isInstagram) {
+        return "Instagram";
+    } else if (isOpera) {
+        return "Opera";
+    } else {
+        return AviviD.UAResult.browser.name;
+    }
+};
+/**
+ * @todo 判斷當前文章是否與推播的文章相同
+ */
+AviviD.replaceSpaceUrl = function(url) {
+    return url.replace(/ /g, "+", "+");
+}
+AviviD.check_same_page_link = function(webPushUrl, type) {
+    if (webPushUrl == "_" || webPushUrl == null) {
+        return false;
+    }
+    var window_link = new URL(window.location.href);
+    window_link.searchParams.delete("utm_source");
+    window_link.searchParams.delete("utm_medium");
+    window_link.searchParams.delete("utm_content");
+    window_link.searchParams.delete("utm_campaign");
+    window_link.searchParams.delete("differ_push_day");
+    link = new URL(webPushUrl);
+    if (type == "likrManualPush" || link.searchParams.get("url") == null) {
+        link2 = link;
+    } else {
+        link2 = new URL(atob(AviviD.replaceSpaceUrl(link.searchParams.get("url"))));
+    }
+    link2.searchParams.delete("utm_source");
+    link2.searchParams.delete("utm_medium");
+    link2.searchParams.delete("utm_content");
+    link2.searchParams.delete("utm_campaign");
+    link2.searchParams.delete("differ_push_day");
+    match = window_link.origin == link2.origin;
+    match = match && window_link.pathname == link2.pathname;
+    [...window_link.searchParams.keys()].forEach(
+        key => match = match && window_link.searchParams.get(key) == link2.searchParams.get(key)
+    );
+    return match;
+};
+AviviD.get_ios_uuid = function() {
+    var gen_uuid = function _uuid() {
+        var d = Date.now();
+        if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
+            d += performance.now();
+        }
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = (d + Math.random() * 16) % 16 | 0;
+            d = Math.floor(d / 16);
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+    };
+    var ios_uuid = "";
+    AviviD.status.is_new_user_ios_uuid = "0";
+    if ((AviviD.get_cookie('AviviD_ios_uuid') == null)) {
+        if (localStorage.getItem('AviviD_ios_uuid') == null) {
+            ios_uuid = gen_uuid();
+            AviviD.status.is_new_user_ios_uuid = "1";
+        } else {
+            ios_uuid = localStorage.getItem('AviviD_ios_uuid');
+        }
+    } else {
+        ios_uuid = AviviD.get_onpage_cookie('AviviD_ios_uuid');
+    }
+    AviviD.set_origin_cookie('AviviD_ios_uuid', ios_uuid);
+    localStorage.setItem('AviviD_ios_uuid', ios_uuid);
+    return ios_uuid;
+};
+AviviD.get_onpage_data = function(callback_data, status, ajax_setting) {
+    var screen_width = screen.width;
+    var onpage_type = 'browsing';
+    if (AviviD.received % 2 == 0) {
+        onpage_type = 'landing';
+    }
+    AviviD[AviviD.set_onpage_function[status]](AviviD.set_onpage_function[status],
+        status,
+        ajax_setting,
+        callback_data,
+        screen_width,
+        onpage_type,
+        0);
+};
+AviviD.set_onpage_function = ["onpage_subscribe", "onpage_subscribed", "onpage_blocked", "onpage_coupon"];
+AviviD.onpage_subscribe = function(function_name, status, ajax_setting,
+    callback_data, screen_width, onpage_type, highest_zindex) {};
+AviviD.onpage_subscribed = function(function_name, status, ajax_setting,
+    callback_data, screen_width, onpage_type, highest_zindex) {
+    AviviD.console_log(callback_data);
+    AviviD.console_log(function_name + " " + screen_width + " " + onpage_type);
+    jQuery(document).ready(function() {
+        AviviD.get_web_article_title();
+        AviviD.get_meta();
+    });
+    var data = callback_data;
+    var web_id = AviviD.web_id;
+    AviviD.title_only = data["content_switch"];
+    AviviD.int_os_type = AviviD.os_type_to_number(AviviD.detect_os_types());
+    AviviD.int_browser_type = AviviD.browser_type_to_number(AviviD.detect_browser_types());
+    AviviD.utm_mode = (AviviD.utm_mode != undefined) ? AviviD.utm_mode : 1;
+    var os_platform = AviviD.int_os_type + (AviviD.int_browser_type).toString().padStart(2, "0");
+    var web_id_enable = Boolean(parseInt(data["enable"])); // web_id 總開關
+    var web_id_direct = Boolean(parseInt(data["direct_enable"])); //web_id 直播開關
+    var os_enable = Boolean(parseInt(data["os"][os_platform])); // os 個別開關
+    var block_str = data['block_url'];
+    var enable = (web_id_enable && os_enable) || (web_id_direct && os_enable);
+    var ad_id = (AviviD.get_onpage_cookie('AviviD_ad_id') != null) ? AviviD.get_onpage_cookie('AviviD_ad_id') : "_";
+    var read_ad_click_once = (AviviD.get_onpage_cookie('AviviD_ad_click_once') != null) ? AviviD.get_onpage_cookie('AviviD_ad_click_once') : "_";
+    var reject_ad_id = "_" == read_ad_click_once ? ad_id : read_ad_click_once + "," + ad_id;
+    var ua = AviviD.UAResult;
+    block_str.forEach(function(str) {
+        if (window.location.href.indexOf(str) > -1 && str != '') {
+            enable = false;
+            return false;
+        }
+    });
+    var is_manual_push = 1; // 1.手推 0.一般
+    var onpage_input_data = {
+        'is_crescent': AviviD.settings.is_crescent,
+        'received': AviviD.received,
+        'title': AviviD.title,
+
+        'url': AviviD.url,
+        'image': AviviD.image,
+        'description': AviviD.description,
+        'utm_mode': AviviD.utm_mode,
+
+        'page_view': AviviD.page_view_num,
+        'uuid': AviviD.uuid,
+        'web_id': AviviD.web_id,
+        'onpage_type': onpage_type,
+        'website_type': AviviD.settings.website_type,
+        'browser_ver': "", //ua.browser.version,
+        'os_ver': ua.os.version,
+        'user_agent': ua.ua,
+        'client_href': window.location.href,
+        'os_type': AviviD.int_os_type,
+        'browser_type': AviviD.int_browser_type,
+        'ad_id': reject_ad_id,
+        'is_ios': "1",
+        'onpage_with_ad': AviviD.settings.onpage_with_ad,
+        'web_id_enable': data["enable"],
+        'web_id_direct': data["direct_enable"],
+        'ad_block_enabled': AviviD.settings.ad_block_enabled,
+        'is_manual_push': is_manual_push
+    };
+    var url_path = (AviviD.get_urlparam('AviviD_onpage_on')) ? "https://webpush-api.likr.com.tw/api/get_onpage_data.php" : "https://load-balancer.likr.com.tw/api/get_onpage_data.php";
+    var ajax_setting = {
+        "http_method": "GET",
+        "data_type": "json",
+        "async": true,
+        "payload": onpage_input_data,
+        "data_url": url_path,
+        "headers": {},
+        "cache": false,
+        "callback_function": "set_onpage_html"
+    };
+    if ((enable && parseInt(data["enable"]) > 0) || AviviD.get_urlparam('AviviD_onpage_on')) {
+        AviviD.get_ajax_datas(ajax_setting, status, false);
+    }
+};
+AviviD.onpage_blocked = function(function_name, status, ajax_setting,
+    callback_data, screen_width, onpage_type, highest_zindex) {};
+AviviD.set_onpage_html = function(callback_data, status, ajax_setting) {
+    var push_id2 = (AviviD.get_onpage_cookie('AviviD_push_id') != null) ? AviviD.get_onpage_cookie('AviviD_push_id') : "_";
+    if (callback_data.length == 0 || push_id2.includes(callback_data.push_id)) {
+        if (ajax_setting["payload"]["is_manual_push"] == 1) { // 1.手推 0.一般
+            ajax_setting["payload"]["is_manual_push"] = 0; // reset is_manual_push = 0 if data is empty %
+            AviviD.get_ajax_datas(ajax_setting, status, false);
+            return false;
+        }
+    }
+    var callback_function_name = "render_onpage_manual_push_" + (ajax_setting["payload"]["is_manual_push"]).toString();
+    AviviD[callback_function_name](callback_data, status);
+    return true;
+};
+AviviD.render_onpage_manual_push_0 = function(callback_data, status) { //一般 logic
+    AviviD.console_log("call render_onpage_manual_push_0");
+    var data = callback_data;
+    if (AviviD.check_live_settings(data)) {
+        AviviD.console_log("live check true ! show live ");
+        AviviD.get_live_html_template(data, status);
+    } else {
+        AviviD.console_log("live check false ! show ad ");
+        if (parseInt(AviviD.settings.website_type) == 3) {
+            AviviD.console_log("ec type 3 ! show data !");
+            AviviD.get_origin_html_template(data, {}, status);
+        } else {
+            if (parseInt(AviviD.settings.is_crescent) == 1) { // 有合作廣告
+                AviviD.console_log("get ad data !");
+                var ad_id = data.icon ? (data.icon.split(",").reverse()[2] ? data.icon.split(",").reverse()[2] : "_") : "_";
+                AviviD.get_ad_data(ad_id, data, status);
+            } else {
+                AviviD.console_log("no crescent ! show data !");
+                AviviD.get_origin_html_template(data, {}, status);
+            }
+        }
+    }
+    return true;
+};
+AviviD.render_onpage_manual_push_1 = function(callback_data, status) { //手推 logic
+    AviviD.console_log("call render_onpage_manual_push_1");
+    var data = callback_data;
+    if (data.image == undefined) //手推封包中的變數名稱不存在image
+    {
+        data.image = data.bigimage;
+    }
+    if (data.click_url == undefined) //手推封包中的變數名稱不存在click_url
+    {
+        data.click_url = data.url;
+    }
+    var PushPageLink = data.url;
+    var match = AviviD.check_same_page_link(PushPageLink, type = "likrManualPush");
+    AviviD.set_onpage_cookie_by_push_id(data);
+    if (AviviD.check_live_settings(data)) {
+        AviviD.console_log("live check true ! show live ");
+        AviviD.get_live_html_template(data, status);
+    } else {
+        AviviD.console_log("live check false ! show ad ");
+        if (parseInt(AviviD.settings.website_type) == 3) {
+            AviviD.console_log("ec type 3 ! show data !");
+            AviviD.get_new_html_template(data, {}, status);
+        } else {
+            if (parseInt(AviviD.settings.is_crescent) == 1) { // 有合作廣告
+                AviviD.console_log("get ad data !");
+                var ad_id = data.icon ? (data.icon.split(",").reverse()[2] ? data.icon.split(",").reverse()[2] : "_") : "_";
+                AviviD.get_ad_data(ad_id, data, status);
+            } else {
+                AviviD.console_log("no crescent ! show data !");
+                AviviD.get_origin_html_template(data, {}, status);
+            }
+        }
+    }
+    return true;
+};
+AviviD.check_live_settings = function(data) {
+    var push_id = AviviD.get_onpage_cookie('AviviD_push_id');
+    push_id = (push_id != null) && (push_id != "undefined") ? push_id : "_";
+    var datestr = AviviD.get_date_format();
+    if ("push_id" in data &&
+        data.push_id != null &&
+        data.push_id != push_id &&
+        data.push_id.substr(-12, 8) == datestr) {
+        if (data.live_time != "") {
+            var live_time = data.live_time;
+            live_time = live_time.replace(' ', 'T');
+            let push_time = new Date(live_time);
+            let tempt_push = push_time.getTime();
+            let d = new Date();
+            let tempt_now = d.getTime();
+            if ((tempt_now - tempt_push) / 1000 / 60 / 60 <= 2 && data.live_status != '_') {
+                return true
+            }
+        }
+    }
+    return false
+};
+AviviD.get_ad_data = function(ad_id, webpushData, status) {
+    var ad_id2 = (AviviD.get_onpage_cookie('AviviD_ad_id') != null) ? AviviD.get_onpage_cookie('AviviD_ad_id') : "_";
+    if (ad_id != ad_id2) { //ad_id 比對 cookie
+        ad_id = ad_id2;
+    }
+
+    var read_ad_click_once = (AviviD.get_onpage_cookie('AviviD_ad_click_once') != null) ? AviviD.get_onpage_cookie('AviviD_ad_click_once') : "_";
+    var reject_ad_id = "_" == read_ad_click_once ? ad_id : read_ad_click_once + "," + ad_id;
+    // var reject_ad_id = ad_id;
+    console.log("reject_ad_id: ", reject_ad_id);
+
+    var ad_data = {
+        'page_view': AviviD.page_view_num,
+        'uuid': AviviD.uuid,
+        'title': AviviD.title,
+        'web_id': AviviD.web_id,
+        'user_agent': AviviD.UAResult.ua,
+        'client_href': window.location.href,
+        'os_type': AviviD.int_os_type,
+        'browser_type': AviviD.int_browser_type,
+        'ad_id': reject_ad_id,
+        'is_ios': "1",
+        'ip': AviviD.clientIP
+    };
+    var ajax_setting = {
+        "http_method": "POST",
+        "data_type": "json",
+        "async": true,
+        "payload": ad_data,
+        "data_url": "https://auto-satellite.advividnetwork.com/api/crescent_give_api.php",
+        "headers": {},
+        "cache": false,
+        "callback_function": "set_new_onpage_html",
+        "extra_data": webpushData
+    };
+    AviviD.get_ajax_datas(ajax_setting, status, true);
+    return true;
+};
+AviviD.set_new_onpage_html = function(callback_data, status, ajax_setting) {
+    var ad_data = callback_data;
+    var data = ajax_setting["extra_data"];
+    var PushPageLink = data.with_button == 1 ? data.button1_url : data.click_url;
+    var match = AviviD.check_same_page_link(PushPageLink);
+    if (!match) {
+        AviviD.set_onpage_cookie_by_ad_id(ad_data);
+        AviviD.set_onpage_ad_see_twice(ad_data.ad_id);
+        var title = data.title;
+        if (title) {
+            if ("new_onpage_version" in AviviD.settings &&
+                parseInt(AviviD.settings.new_onpage_version) == 1 &&
+                AviviD.settings.website_type == 3) {
+                AviviD.console_log("call new version tpl");
+                AviviD.get_new_html_template(data, ad_data, status);
+            } else {
+                AviviD.console_log("call old version tpl");
+                AviviD.get_origin_html_template(data, ad_data, status);
+            }
+        } else {
+            AviviD.console_log("no data for onpage !");
+            if (parseInt(AviviD.settings.yh_enable) == 1 && parseInt(AviviD.settings.is_crescent) == 1) {
+                AviviD.get_yh_html_template();
+                var js_source = 'https://ad.sitemaji.com/ysm_' + AviviD.web_id + '.js';
+                AviviD.loadScript(js_source);
+            }
+        }
+    }
+    return true;
+};
+AviviD.get_live_html_template = function(data, status) {
+    var push_id = data.push_id;
+    var ad_id = data.icon ? (data.icon.split(",").reverse()[2] ? data.icon.split(",").reverse()[2] : "_") : "_";
+    var avivid_banner_id = ad_id;
+    data.icon = AviviD.setIconWithImpression(data.icon, data.title);
+    data.url = AviviD.setUrlWithRedirecter(data.url, data.title);
+    var bg_image = "";
+    if ("image" in data) {
+        bg_image = data.image;
+    }
+    if ("bigimage" in data) {
+        bg_image = data.bigimage;
+    }
+    var onpage_data = {
+        "title": "",
+        "ad_title": "",
+        "bg_image": bg_image,
+        "title_click": data.live_url,
+        "ad_title_click": "",
+        "logo": ""
+    };
+    AviviD.console_log("final push data : ");
+    AviviD.console_log(data);
+    AviviD.console_log(onpage_data);
+    var live_css_style = "row";
+    if (data.live_status == "live_straight") {
+        live_css_style = "column";
+    }
+    var html = `
+    <div class="` + AviviD.onpage_id + ` avivid_live_stream_` + live_css_style + `" style="` + AviviD.onpage_inline_style() + `">
+      <div class="avivid_arrow_wrapper" onclick="AviviD.close_avivid_onpage();">
+        <div class="avivid_arrow_close"></div>
+        <div class="clear"></div>
+      </div>
+      <div class="avivid_onpage_content_wrapper avivid_live_stream_` + live_css_style + `"
+           style="background-image:url('` + onpage_data.bg_image + `');"
+           onclick="AviviD.click_avivid_onpage('` + onpage_data.title_click + `','live');">
+        <div class="avivid_live_btn">前往觀看</div>
+      </div>
+    </div>`;
+    AviviD.show_avivid_onpage(html, onpage_data);
+    return true;
+};
+AviviD.get_origin_html_template = function(data, ad_data, status) {
+    AviviD.console_log(ad_data);
+    if (data.ad_id == 'no_ad_id' && data.icon != "_" && data.icon != null) {
+        var icon_url = new URL(data.icon);
+        icon_url.searchParams.set("url", AviviD.settings.icon_path);
+        data.icon = icon_url.href;
+    }
+    AviviD.banner_id = data.icon ? data.icon.split(",").reverse()[2] : "_";
+    AviviD.push_version = data.ad_type;
+    AviviD.ios_ad_id = data.ad_id;
+    var onpage_data = {
+        "title": data.title,
+        "ad_title": "",
+        "bg_image": data.image,
+        "title_click": data.click_url,
+        "ad_title_click": data.click_url,
+        "logo": data.icon
+    };
+    var font_css = "";
+
+    var ad_extra_css = "avivid_onpage_ad_no_visibility";
+    var ad_opacity_css = "";
+    var ad_bg_css = "avivid_onpage_content_bg";
+    var ad_position_css = "";
+    if (Object.keys(ad_data).length > 0) {
+        if (AviviD.settings.onpage_divide_article_ad == 1) { //加在這
+            AviviD.console_log("onpage_divide_article_ad");
+            onpage_data = {
+                "title": ad_data.msg,
+                "ad_title": ad_data.title,
+                "bg_image": ad_data.image,
+                "title_click": ad_data.click_url,
+                "ad_title_click": ad_data.click_url,
+                "logo": ad_data.icon
+            };
+        } else {
+            onpage_data = {
+                "title": data.button1_title,
+                "ad_title": ad_data.msg,
+                "bg_image": ad_data.image,
+                "title_click": data.button1_url,
+                "ad_title_click": ad_data.click_url,
+                "logo": data.button1_icon
+            };
+        }
+        if (data.button1_title) {
+            ad_extra_css = "";
+        } else {
+            onpage_data.title = ad_data.msg;
+            onpage_data.logo = ad_data.icon;
+            onpage_data.title_click = ad_data.click_url;
+        }
+
+        ad_opacity_css = "avivid_onpage_article_no_opacity";
+        ad_bg_css = "";
+    }
+    if (AviviD.web_id == 'thanhnien2021' || AviviD.web_id == 'testthanhnien' || AviviD.web_id == 'techz') {
+        font_css = "vn-font";
+        ad_opacity_css = "avivid_onpage_article_no_opacity";
+    }
+    AviviD.received += 1;
+    AviviD.set_onpage_cookie_minutes('AviviD_received', AviviD.received, 1);
+    AviviD.console_log(onpage_data);
+    var onpage_position = AviviD.get_onpage_position();
+    if (onpage_position.split('_')[1] == 'b' && ad_bg_css != '' && AviviD.str_os_type == 'iOS') {
+        ad_position_css = "b_setting";
+    }
+    var avivid_js_tracker = "";
+    var avivid_imp_tracker = "";
+    if (ad_data.ad_id in AviviD.banner_id_to_imp_tracker) avivid_imp_tracker = AviviD.banner_id_to_imp_tracker[ad_data.ad_id];
+    var ad_id = ad_data ? ad_data.ad_id : '_';
+    var style = ''
+    if (ad_position_css == '') {
+        style = AviviD.onpage_inline_style();
+    } else {
+        style = AviviD.onpage_inline_style(b = true);
+    }
+    var html = `
+    <div class="` + AviviD.onpage_id + ` " style="` + style + `">
+      <div class="avivid_arrow_wrapper" onclick="AviviD.close_avivid_onpage();">
+        <div class="avivid_arrow_close"></div>
+        <div class="clear"></div>
+      </div>
+      <div class="avivid_onpage_content_wrapper ` + ad_bg_css + `"
+           style="background-image:url('` + onpage_data.bg_image + `');">
+        <div class="avivid_onpage_img_wrapper"
+             onclick="AviviD.click_avivid_onpage('` + onpage_data.ad_title_click + `','ad');AviviD.set_onpage_ad_click_once('` + ad_id + `')"></div>
+        <div class="avivid_onpage_ad_wrapper ` + ad_extra_css + `"
+             onclick="AviviD.click_avivid_onpage('` + onpage_data.ad_title_click + `','ad');AviviD.set_onpage_ad_click_once('` + ad_id + `')">
+          <div class="avivid_ad_title">` + onpage_data.ad_title + `</div>
+        </div>
+        <div class="avivid_onpage_article_wrapper ` + ad_opacity_css + `"
+             onclick="AviviD.click_avivid_onpage('` + onpage_data.title_click + `','article');AviviD.set_onpage_ad_click_once('` + ad_id + `')">
+          <div class="avivid_article_wrapper">
+            <div class="avivid_logo" style="background-image:url('` + onpage_data.logo + `');"></div>
+            <div class="avivid_article ` + font_css + `">` + onpage_data.title + `</div>
+            <div class="avivid_copyright"></div>
+            <div class="clear"></div>
+          </div>
+        </div>` +
+        avivid_js_tracker +
+        `</div>
+      <div class="avivid_imp_tracker" style="background-image:url('` + avivid_imp_tracker + `');"></div>
+    </div>`;
+    if (onpage_data.title == null || onpage_data.title == '') return false;
+    AviviD.show_avivid_onpage(html, onpage_data);
+    return true;
+};
+AviviD.get_new_html_template = function(data, ad_data, status) {
+    if (data.ad_id == 'no_ad_id' && data.icon != "_" && data.icon != null) {
+        var icon_url = new URL(data.icon);
+        icon_url.searchParams.set("url", AviviD.settings.icon_path);
+        data.icon = icon_url.href;
+    }
+    AviviD.banner_id = data.icon ? data.icon.split(",").reverse()[2] : "_";
+    AviviD.push_version = data.ad_type;
+    AviviD.ios_ad_id = data.ad_id;
+    var bg_image = "";
+    if ("image" in data) {
+        bg_image = data.image;
+    }
+    if ("bigimage" in data) {
+        bg_image = data.bigimage;
+    }
+    var onpage_data = {
+        "title": data.title,
+        "ad_title": "",
+        "bg_image": bg_image,
+        "title_click": data.click_url,
+        "ad_title_click": "",
+        "logo": data.icon
+    };
+    var font_css = "";
+    if (AviviD.web_id == 'thanhnien2021' || AviviD.web_id == 'testthanhnien' || AviviD.web_id == 'techz') {
+        font_css = "vn-font";
+    }
+    var ad_extra_css = "avivid_onpage_ad_no_visibility";
+    var ad_bg_css = "avivid_onpage_content_bg";
+    if (Object.keys(ad_data).length > 0) {
+        onpage_data = {
+            "title": data.button1_title,
+            "ad_title": ad_data.msg,
+            "bg_image": ad_data.image,
+            "title_click": data.click_url,
+            "ad_title_click": ad_data.click_url,
+            "logo": data.button1_icon
+        };
+        ad_extra_css = "";
+        ad_bg_css = "";
+    }
+    AviviD.received += 1;
+    AviviD.set_onpage_cookie_minutes('AviviD_received', AviviD.received, 1);
+    AviviD.console_log(onpage_data);
+    var onpage_position = AviviD.get_onpage_position();
+    var html = `
+    <div class="` + AviviD.onpage_id + ` " style="` + AviviD.onpage_inline_style() + `">
+      <div class="avivid_arrow_wrapper" onclick="AviviD.close_avivid_onpage();">
+        <div class="avivid_arrow_close"></div>
+        <div class="clear"></div>
+      </div>
+      <div class="avivid_onpage_content_wrapper">
+        <div class="avivid_onpage_img_wrapper ` + ad_bg_css + `"
+             style="background-image:url('` + onpage_data.bg_image + `');"
+             onclick="AviviD.click_avivid_onpage('` + onpage_data.ad_title_click + `','ad');"></div>
+        <div class="avivid_onpage_ad_wrapper ` + ad_extra_css + `"
+             onclick="AviviD.click_avivid_onpage('` + onpage_data.ad_title_click + `','ad');">
+          <div class="avivid_ad_title">` + onpage_data.ad_title + `</div>
+        </div>
+        <div class="avivid_onpage_article_wrapper avivid_onpage_article_no_opacity">
+          <div class="avivid_article_wrapper"
+               onclick="AviviD.click_avivid_onpage('` + onpage_data.title_click + `','article');">
+            <div class="avivid_logo" style="background-image:url('` + onpage_data.logo + `');"></div>
+            <div class="avivid_article ` + font_css + `">` + onpage_data.title + `</div>
+            <div class="avivid_copyright"></div>
+            <div class="clear"></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    if (onpage_data.title == null || onpage_data.title == '') return false;
+    AviviD.show_avivid_onpage(html, onpage_data);
+    return true;
+};
+AviviD.get_yh_html_template = function() {
+    var onpage_data = {
+        "title": "",
+        "ad_title": "",
+        "bg_image": "",
+        "title_click": "",
+        "ad_title_click": "",
+        "logo": ""
+    };
+    var onpage_position = AviviD.get_onpage_position();
+    var html = `
+    <div class="` + AviviD.onpage_id + `" style="` + AviviD.onpage_inline_style(force_rb = true) + `">
+      <div class="avivid_arrow_wrapper" onclick="AviviD.close_avivid_onpage();">
+        <div class="avivid_arrow_close"></div>
+        <div class="clear"></div>
+      </div>
+      <div class="sitemaji_banner" model="300x210" type="avivid"></div>
+    </div>`;
+    AviviD.show_avivid_onpage(html, onpage_data);
+}
+AviviD.close_avivid_onpage = function() {
+    jQuery("." + AviviD.onpage_id).remove();
+};
+AviviD.get_onpage_position = function() {
+    var onpage_position_css_mapping = ["r_b", "r_t", "l_t", "l_b"]; /*右下 右上 左上 左下*/
+    return onpage_position_css_mapping[parseInt(AviviD.settings.onpage_pc_position)];
+};
+AviviD.get_user_defined_position = function() {
+    var position_css_class = "." + AviviD.get_onpage_position() + "_setting";
+    var css_position_defined = {
+        "b": "bottom",
+        "t": "top",
+        "l": "left",
+        "r": "right"
+    };
+    var css_user_defined = css_position_defined[(AviviD.get_onpage_position()).substring(2, 3)];
+    if (parseInt(AviviD.settings.onpage_position) == 2) {
+        var view_height = AviviD.settings.onpage_position_vh + "vh";
+        var css_style = css_user_defined + " : " + view_height + " !important;";
+        jQuery(position_css_class).css({
+            "cssText": css_style
+        });
+    }
+};
+AviviD.onpage_style = function(onpage_data) {
+    if (parseInt(AviviD.settings.website_type) != 3 && onpage_data.ad_title != '') {
+        jQuery('.avivid_onpage_article_wrapper').css({
+            "opacity": 1
+        });
+        jQuery('.avivid_onpage_content_wrapper').css({
+            "height": '18vh'
+        });
+    }
+};
+
+if (typeof(AviviD.gtm_event_send) == 'undefined') {
+    AviviD.gtm_event_send = function(event_name, event_category, event_label) {
+        if (AviviD.ga_mode != 1) {
+            return false;
+        }
+        if ((typeof(AviviD.ga_id) != 'undefined') && (AviviD.ga_id != "")) {
+            AviviD.event_ga_id = AviviD.ga_id;
+        } else {
+            return false;
+        }
+        has_gtm = typeof(gtag) == "undefined" ? 0 : 1;
+        if (has_gtm == 1) {
+            try {
+                if ("event_ga_id" in AviviD) {
+                    gtag("config", AviviD.event_ga_id);
+                }
+                gtag("event",
+                    event_name, {
+                        "event_category": event_category,
+                        "event_label": event_label,
+                        "nonInteraction": true
+                    });
+            } catch (e) {
+                AviviD.console_logs(e);
+            }
+        } else {
+            try {
+                if (AviviD.web_id == 'ohohfresh' || AviviD.web_id == 'kava') {
+                    ga("newTracker.send", {
+                        hitType: "event",
+                        eventCategory: event_category,
+                        eventAction: event_name,
+                        eventLabel: event_label,
+                        nonInteraction: true
+                    });
+                } else if (AviviD.web_id == 'mayfullqdm') {
+                    ga("gtm4.send", {
+                        hitType: "event",
+                        eventCategory: event_category,
+                        eventAction: event_name,
+                        eventLabel: event_label,
+                        nonInteraction: true
+                    });
+                } else {
+                    if ("event_ga_id" in AviviD) {
+                        ga('create', AviviD.event_ga_id, 'auto');
+                    }
+                    ga("send", {
+                        hitType: "event",
+                        eventCategory: event_category,
+                        eventAction: event_name,
+                        eventLabel: event_label,
+                        nonInteraction: true
+                    });
+                }
+            } catch (e) {
+                AviviD.console_logs(e);
+            }
+        }
+    };
+}
+
+AviviD.click_avivid_onpage = function(url, types) {
+    AviviD.gtm_event_send("onpage_click", "likr_event", url);
+    AviviD.close_avivid_onpage();
+    window.open(url);
+};
+AviviD.show_avivid_onpage = function(html, onpage_data) {
+    if (self.frameElement && self.frameElement.tagName == "IFRAME") { //判斷自己是否身在iframe
+        return false;
+    } else {
+        var onpage_css = "https://rhea-cache.advividnetwork.com/onpage_css/avivid_onpage_test.css";
+        jQuery('head').append('<link rel="stylesheet" type="text/css" href="' + onpage_css + '">');
+        jQuery("." + AviviD.onpage_id).remove();
+        jQuery("body").append(html);
+        AviviD.get_user_defined_position(); // user define
+        // AviviD.onpage_style(onpage_data);
+        // setTimeout(function() {
+        //     jQuery("."+AviviD.onpage_id).css('display', 'block');
+        // }, 1500);
+    }
+};
+
+AviviD.waterfall_enable = function() {
+        // if(window.jQuery)
+        // {
+        jQuery(document).ready(function() {
+            AviviD.likrTimer.init();
+            // AviviD.likrTimer.intervalTrigger(AviviD.imitation_subscribe_webpush, 1);
+            AviviD.likrTimer.intervalTrigger(AviviD.check_coupon_onpage, 1); //David 2021-12-08
+        });
+        // }
+        // else
+        // {
+        //   setTimeout(function(){AviviD.onpage_ready();},1000);
+        // }
+
+    }
+    // David 2021-12-02 Coupon from v19 to v21
+    ///////// 折價卷onpage判斷//////////////
+AviviD.check_coupon_onpage = function() {
+    if (AviviD.get_cookie("AviviD_show_coupon") == '1') {
+        AviviD.imitation_subscribe_webpush(3);
+    } else {
+        AviviD.imitation_subscribe_webpush(1);
+    }
+}
+
+AviviD.onpage_coupon = function(function_name, status, ajax_setting,
+    callback_data, screen_width, onpage_type, highest_zindex) {
+    var ajax_setting = {
+        "data_url": "https://rhea-cache.advividnetwork.com/api/getCoupon",
+        "http_method": "GET",
+        "data_type": "json",
+        "payload": {
+            "web_id": AviviD.web_id,
+            // "web_id":"coway", 
+            "uuid": AviviD.uuid
+        },
+        "async": true,
+        "headers": {},
+        "cache": false,
+        "callback_function": "show_coupon"
+    };
+    AviviD.get_ajax_datas(ajax_setting, status, false);
+};
+AviviD.show_coupon = function(callback_data, status, ajax_setting) {
+    // console.log(callback_data);
+    // callback_data = JSON.stringify(callback_data);
+
+    if (callback_data != "") {
+        AviviD.likrTimer.clearTimer();
+        AviviD.set_cookie('AviviD_show_coupon', '0', '1');
+        var onpage_position = AviviD.get_onpage_position();
+        var ad_position_css = "";
+        var ad_bg_css = "avivid_onpage_content_bg";
+        var ad_opacity_css = "";
+        var avivid_js_tracker = "";
+        var avivid_imp_tracker = "";
+        var ad_extra_css = "avivid_onpage_ad_no_visibility";
+        // var ad_extra_css = "";
+        var onpage_data = {
+            "title": callback_data['title'],
+            "ad_title": callback_data['title'],
+            "bg_image": callback_data['image_url'],
+            "title_click": callback_data['url'],
+            "ad_title_click": callback_data['url'],
+            "logo": `https://avivid.likr.tw/pushEndPoint/images/${AviviD.web_id}/image/icon.png`
+        };
+        var html = `
+        <div class="` + AviviD.onpage_id + ` " style="` + AviviD.onpage_inline_style() + `">
+          <div class="avivid_arrow_wrapper" onclick="AviviD.close_avivid_onpage();">
+            <div class="avivid_arrow_close"></div>
+            <div class="clear"></div>
+          </div>
+          <div class="avivid_onpage_content_wrapper ` + ad_bg_css + `"
+               style="background-image:url('` + onpage_data.bg_image + `');">
+            <div class="avivid_onpage_img_wrapper"
+                 onclick="AviviD.click_avivid_onpage('` + onpage_data.ad_title_click + `','ad');AviviD.set_cookie_minutes('AviviD_coupon_clicked', 1, 30)"></div>
+            <div class="avivid_onpage_ad_wrapper ` + ad_extra_css + `"
+                 onclick="AviviD.click_avivid_onpage('` + onpage_data.ad_title_click + `','ad');AviviD.set_cookie_minutes('AviviD_coupon_clicked', 1, 30)">
+              <div class="avivid_ad_title">` + onpage_data.title + `</div>
+            </div>
+            <div class="avivid_onpage_article_wrapper ` + ad_opacity_css + `"
+                 onclick="AviviD.click_avivid_onpage('` + onpage_data.ad_title_click + `','article');AviviD.set_cookie_minutes('AviviD_coupon_clicked', 1, 30)">
+              <div class="avivid_article_wrapper">
+                <div class="avivid_logo" style="background-image:url('` + onpage_data.logo + `');"></div>
+                <div class="avivid_article">` + onpage_data.title + `</div>
+                <div class="avivid_copyright"></div>
+                <div class="clear"></div>
+              </div>
+            </div>` +
+            avivid_js_tracker +
+            `</div>
+          <div class="avivid_imp_tracker" style="background-image:url('` + avivid_imp_tracker + `');"></div>
+        </div>`;
+
+
+        if (callback_data['image_url']) {
+            AviviD.show_avivid_onpage(html, onpage_data);
+        }
+    } else {
+        AviviD.imitation_subscribe_webpush(1);
+    }
+};

@@ -1,0 +1,54 @@
+body {
+  width: 100vw;
+  height: 100vh;
+ 
+ background:url("https://congnghemoitruongsite.files.wordpress.com/2017/04/tc3a1c-he1baa1i-ce1bba7a-vie1bb87c-c491e1bb8dc-tin-te1bba9c-be1bbaba-bc3a3i.jpg"); 
+  overflow: hidden;
+  background-repeat: no-repeat;
+  background-size: cover;
+
+ 
+}
+
+
+.content_card{
+  display: flex;
+align-items: center;
+justify-content: center;
+}
+.card {
+  background-color: white;
+  width: 300px;
+  padding: 2rem;
+  transition: 0.5s ease;
+  cursor: pointer;
+  margin:30px;
+  text-align: center;
+
+}
+
+
+.card-stats .type{
+  font-size:11px;
+  font-weight: 300;
+  text-transform: uppercase;
+}
+.card:hover {
+  transform: scale(1.15);
+  box-shadow: 5px 5px 15px rgba(0,0,0,0.6);
+}
+
+
+.svth{
+  background-color: rgba(123, 105, 6, 0.429);
+  color: white;
+  border-radius: 20px;
+  width: 80%;
+ margin: auto;
+}
+.card-image img{
+  width: 100%;
+  height: 400px;
+  
+ 
+}

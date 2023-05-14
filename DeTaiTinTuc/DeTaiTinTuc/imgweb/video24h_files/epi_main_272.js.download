@@ -1,0 +1,181 @@
+﻿var firstTimePNS = !0,
+        dmn = "https://notify1.thanhnien.vn/";
+
+function saythankyou() {
+    new Notification("Đăng ký thành công!", {
+        body: "Bạn sẽ nhận được thông báo khi có tin nóng.",
+        icon: "//static.thanhnien.vn/v3/app_themes/img/logo_icon_512x512.jpg",
+        link: "https://thanhnien.vn",
+        timeout: 4e3,
+        onClick: function () {
+            window.focus(), this.close()
+        },
+        vibrate: [200, 100, 200, 100, 200, 100, 200]
+    });
+    $("#hdrNotification").hide()
+}
+
+function showInfo(i) {
+    switch (0 === $("#notifyModal").length && $("body").append('<div class="modal fade modal--pns" id="notifyModal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true"></div>'), i) {
+        case "ask":
+            $("#notifyModal").html('<div class="modal-dialog" role="document"><div class="modal-header"><a href="#" class="close" data-dismiss="modal" aria-label="Close"><i class="icon-close"></i></a><a href="/"><img src="https://static.thanhnien.vn/v3/App_Themes/img/TNO_wlogo.svg" height="40"></a></div><div class="modal-content"><p>Cho phép Thanh Niên gửi đến bạn những thông tin mới cập nhật.</p><div class="button"><a href="javascript:void(0);" onclick="showInfo(\'grant\');getNotification();" class="btn btn-primary">Đồng ý</a> <a href="#" class="btn btn-secondary" data-dismiss="modal">Hủy</a></div></div></div>');
+            break;
+        case "grant":
+            $("#notifyModal").html('<div class="modal-dialog" role="document"><div class="modal-header"><a href="#" class="close" data-dismiss="modal" aria-label="Close"><i class="icon-close"></i></a><a href="/"><img src="https://static.thanhnien.vn/v3/App_Themes/img/TNO_wlogo.svg" height="40"></a></div><div class="modal-content"><h3>Nhấn <span>Cho phép</span> hoặc <span>Allow</span></h3><p>Nhận thông báo ngay khi có tin tức nóng.</p><p>Bạn có thể thay đổi cài đặt sau nếu không muốn nhận tin.</p></div></div>');
+            break;
+        case "denied":
+            $("#notifyModal").html('\x3c!-- Block PNS --\x3e<div class="block-pns"><div class="icon"><i class="icon-ban"></i></div><div class="text">Bạn đã chặn thông báo tin tức từ Báo Thanh Niên.</div><a href="#" class="btn-close" data-dismiss="modal"><i class="icon-close"></i></a><p><img src="//static.thanhnien.vn/v3/app_themes/img/pns-block.png" /></p></div>');
+            break;
+        default:
+            return
+    }
+    $("#notifyModal").modal("show")
+}
+
+function getNotification() {
+    try {
+        if (!("Notification" in window))
+            return console.log("This browser does not support notifications!"), void $("#hdrNotification").hide();
+        Notification.requestPermission(function (i) {
+            setUpPush(), IS_MOBILE ? $("#hdrNotification").hide() : "granted" === i ? $("#notifyModal").modal("hide") : "denied" === i ? showInfo("denied") : $("#notifyModal").modal("hide")
+        })
+    } catch (i) {
+    }
+}
+
+function urlBase64ToUint8Array(i) {
+    for (var n = (i + "=".repeat((4 - i.length % 4) % 4)).replace(/\-/g, "+").replace(/_/g, "/"), e = window.atob(n), t = new Uint8Array(e.length), o = 0; o < e.length; ++o)
+        t[o] = e.charCodeAt(o);
+    return t
+}
+
+function registerServiceWorker() {
+    return navigator.serviceWorker.register("/jscripts/pns/service-worker-272.js?7.2").then(function (i) {
+        return i
+    }).catch(function (i) {
+        console.error("Unable to register service worker.", i)
+    })
+}
+
+function getSWRegistration() {
+    return navigator.serviceWorker.register("/jscripts/pns/service-worker-272.js?7.2")
+}
+
+function askPermission() {
+    return new Promise(function (i, n) {
+        var e = Notification.requestPermission(function (n) {
+            i(n)
+        });
+        e && e.then(i, n)
+    }).then(function (i) {
+        if ("granted" !== i)
+            throw new Error("We weren't granted permission.")
+    })
+}
+
+function getNotificationPermissionState() {
+    return navigator.permissions ? navigator.permissions.query({
+        name: "notifications"
+    }).then(i => i.state) : new Promise(i => {
+        i(Notification.permission)
+    })
+}
+
+function sendSubscriptionToBackEnd(i, n) {
+    let e = i.endpoint,
+            t = JSON.stringify(i),
+            o = JSON.parse(t).keys,
+            a = o.auth,
+            s = o.p256dh;
+    return fetch(dmn + "/api/regsub", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            endpoint: e,
+            keys: JSON.stringify({
+                auth: a,
+                p256dh: s
+            }),
+            auth: a,
+            p256dh: s,
+            autoupdate: n,
+            ismobile: detectmob(),
+            appname: navigator.appName,
+            appcodename: navigator.appCodeName,
+            plaform: navigator.platform,
+            useragent: navigator.userAgent,
+            appversion: navigator.appVersion
+        })
+    }).then(function (i) {
+        if (!i.ok)
+            throw new Error("Bad status code from server.")
+    })
+}
+
+function detectmob() {
+    return window.innerWidth <= 800 && window.innerHeight <= 600
+}
+
+function subscribeUserToPush() {
+    return getSWRegistration().then(function (i) {
+        const n = {
+            userVisibleOnly: !0,
+            applicationServerKey: urlBase64ToUint8Array("BDepaXbam7H7J1TEFHCldIqigMUDSTB3iRTF2gj9v2TxycEEY3bnsxFReFAbuTMcslom-dPU1ISBXdaWDBUngTc")
+        };
+        return i.pushManager.subscribe(n)
+    }).then(function (i) {
+        return i
+    })
+}
+
+function setUpPush() {
+    return Promise.all([registerServiceWorker(), getNotificationPermissionState()]).then(function (i) {
+        i[0];
+        const n = i[1];
+        if ("denied" === n)
+            return void console.warn("The notification permission has been blocked. Nothing we can do.");
+        let e = Promise.resolve();
+        "granted" === n ? e.then(subscribeUserToPush).then(function (i) {
+            return i && firstTimePNS ? (sendSubscriptionToBackEnd(i, 0), saythankyou()) : "undefined" != typeof Storage && (sessionStorage.clickcount ? sessionStorage.clickcount = Number(sessionStorage.clickcount) + 1 : (sessionStorage.clickcount = 1, sendSubscriptionToBackEnd(i, 1))), i
+        }).then(function (i) { }).catch(function (i) {
+            console.log("subcription err", i)
+        }) : e = askPermission()
+    }).catch(function (i) {
+        console.log("Unable to register the service worker: " + i)
+    })
+}
+$(document).ready(function () {
+    if ("undefined" === typeof isNotifyContent)
+        isNotifyContent = false;
+    if ("serviceWorker" in navigator)
+        if ("PushManager" in window) {
+            if ("/" == window.location.pathname && "denied" === Notification.permission) {
+                isNotifyContent = false;
+            }
+            if ("granted" === Notification.permission)
+                firstTimePNS = !1, navigator.serviceWorker.getRegistration().then(function (i) {
+                    setUpPush()
+                });
+            else if (IS_MOBILE) {
+                console.log(("default" === Notification.permission) + isNotifyContent);
+                if ("default" === Notification.permission && ($("#hdrNotification").css("display", "inline-block"), $("#hdrNotification").click(function (i) {
+                    i.preventDefault(), i.stopPropagation(), "denied" === Notification.permission ? showInfo("denied") : getNotification() /*showInfo("ask")*/
+                }), "undefined" != typeof isNotifyContent && isNotifyContent)) {
+                    var i = "notifyalert1" + window.location.pathname;
+                    i = i.replace(/\//g, "").replace(".html", "").replace(/-/g, ""), "true" === getCookie(i) || (window.setTimeout(function () {
+                        $("#hdrNotification").click()
+                    }, "/" == window.location.pathname ? 1e4 : 4e4), "/" == window.location.pathname ? setCookieDaily(i, "true", 1) : setCookie(i, "true", 365))
+                }
+            } else
+                $("#hdrNotification").css("display", "inline-block"), $("#hdrNotification").click(function (i) {
+                    i.preventDefault(), i.stopPropagation(), "denied" === Notification.permission ? showInfo("denied") : showInfo("ask")
+                }), "undefined" != typeof isNotifyContent && isNotifyContent && (i = (i = "notifyalert1" + window.location.pathname).replace(/\//g, "").replace(".html", "").replace(/-/g, ""), "true" !== getCookie(i) && (window.setTimeout(function () {
+                    $("#hdrNotification").click()
+                }, "/" == window.location.pathname ? 1e4 : 4e4), "/" == window.location.pathname ? setCookieDaily(i, "true", 1) : setCookie(i, "true", 365)));
+        } else
+            firstTimePNS && console.log("PM is not support");
+    else
+        firstTimePNS && console.log("SW is not support")
+});
